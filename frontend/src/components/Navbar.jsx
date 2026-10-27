@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BookOpen, Sparkles, Bookmark, BarChart3, Search, ChevronDown, LogIn, UserPlus, NotebookPen, Moon, Sun } from 'lucide-react';
+import { BookOpen, Sparkles, Bookmark, BarChart3, Brain, Search, ChevronDown, LogIn, UserPlus, NotebookPen, Moon, Sun } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function Navbar({ currentTab, onSelectTab, searchQuery, onSearchChange, currentUser, onSignIn, onRegister, onSignOut, theme = 'light', onToggleTheme }) {
@@ -43,7 +43,8 @@ export default function Navbar({ currentTab, onSelectTab, searchQuery, onSearchC
     { id: 'for-you', label: 'For You', icon: Sparkles, protected: true },
     { id: 'library', label: 'My Library', icon: Bookmark, protected: true },
     { id: 'reader', label: 'Reading Room', icon: NotebookPen, protected: true },
-    { id: 'dashboard', label: 'ML Dashboard', icon: BarChart3 }
+    { id: 'dashboard', label: 'ML Dashboard', icon: BarChart3 },
+    { id: 'insights', label: 'ML Insights', icon: Brain }
   ];
   const renderSuggestions = () => suggestionsOpen && suggestions.length > 0 && (
     <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-[#E5DAC6] bg-white shadow-xl">
@@ -79,7 +80,7 @@ export default function Navbar({ currentTab, onSelectTab, searchQuery, onSearchC
          <div className="relative pb-3 md:hidden" ref={mobileSearchRef}><Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8C8274]" size={16} /><input value={searchQuery} onChange={(event) => { onSearchChange(event.target.value); setSuggestionsOpen(true); }} onFocus={() => setSuggestionsOpen(true)} placeholder="Search books, authors, genres…" className="w-full rounded-full border border-[#D8CEBD] bg-white py-2 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-[#C5A059]" aria-label="Search books" />{renderSuggestions()}</div>
       </div>
     </header>
-    <nav aria-label="Mobile navigation" className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[#E8DFC8] bg-[#FAF7F2] px-1 pt-2 md:hidden">
+    <nav aria-label="Mobile navigation" className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-[#E8DFC8] bg-[#FAF7F2] px-1 pt-2 md:hidden">
       {navItems.map(({ id, label, icon: Icon }) => <button type="button" key={id} aria-label={label} aria-current={currentTab === id ? 'page' : undefined} onClick={() => onSelectTab(id)} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg px-1 text-[10px] font-semibold ${currentTab === id ? 'bg-[#1E1B18] text-white' : 'text-[#57524D]'}`}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
     </nav></>
   );

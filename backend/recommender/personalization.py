@@ -242,9 +242,15 @@ def profile_for(db, user_id):
     more -= excluded
     feedback_books = db.query(Book).filter(Book.book_id.in_(more | less)).order_by(Book.book_id).all() if more or less else []
     collaborative, neighbor_count = collaborative_for(db, user_id, ratings, blocked_seeds, rated_ids)
+    try:
+        from .ml_insights import cluster_users
+        cluster = cluster_users(db, user_id) if len(ratings) >= 3 else None
+    except Exception:
+        cluster = None
     return {"ratings": ratings, "rated_ids": rated_ids, "affinity": affinity, "seeds": seeds[:100], "excluded": excluded,
             "liked_ids": set(liked), "high_ratings": {row.book_id: float(row.rating) for row in ratings if row.rating >= 4},
             "collaborative": collaborative, "neighbor_count": neighbor_count,
+            "cluster": cluster,
             "more": [features(book) for book in feedback_books if book.book_id in more][:100],
             "less": [features(book) for book in feedback_books if book.book_id in less][:100]}
 
@@ -332,6 +338,7 @@ def rank_feed(db, user_id, preferences, alpha, mode, anchor_book_id=None, now=No
     rated_ids = profile["rated_ids"]
     favorites = {genre.casefold() for genre in preferences["favorite_genres"]}
     dislikes = {genre.casefold() for genre in preferences["disliked_genres"]}
+    cluster_genres = {item["genre"].casefold() for item in (profile.get("cluster") or {}).get("top_genres", [])}
     seed_features = [features(book) for book in profile["seeds"]]
     max_popularity = max((math.log1p(max(0, book.ratings_count or 0)) for book in candidates), default=1) or 1
     scored = []
@@ -344,7 +351,8 @@ def rank_feed(db, user_id, preferences, alpha, mode, anchor_book_id=None, now=No
             continue
         content = max((similarity(tags, seed) for seed in seed_features), default=0)
         matching = tags & favorites
-        content = min(1.0, content * 0.6 + (0.4 if matching else 0) + affinity * 0.25)
+        cluster_matching = tags & cluster_genres
+        content = min(1.0, content * 0.6 + (0.4 if matching else 0) + (0.18 if cluster_matching else 0) + affinity * 0.25)
         popularity = math.log1p(max(0, book.ratings_count or 0)) / max_popularity
         quality = max(0, min(1, (book.weighted_rating or book.average_rating or 0) / 5))
         collaborative = profile["collaborative"].get(book.book_id)
@@ -379,6 +387,8 @@ def rank_feed(db, user_id, preferences, alpha, mode, anchor_book_id=None, now=No
             reasons.insert(0, {"type": "collaborative", "text": text})
         if matching:
             reasons.append({"type": "genre", "text": "Matches your preferred genre: " + sorted(matching)[0]})
+        elif cluster_matching:
+            reasons.append({"type": "cluster", "text": f"Fits your {profile['cluster']['cluster_label'].lower()} reading cluster: {sorted(cluster_matching)[0]}"})
         if affinity:
             reasons.append({"type": "author", "text": "By an author you follow or whose books you liked, favorited, or rated highly"})
         if more:

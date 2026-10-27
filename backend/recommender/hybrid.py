@@ -338,12 +338,14 @@ class HybridRecommender:
         """Load persisted ratings first, then the cached offline history."""
         try:
             from ..database import SessionLocal
-            from ..models.database_models import Rating
+            from ..models.database_models import Rating, User
             db = SessionLocal()
             try:
                 rows = db.query(Rating).filter(Rating.user_id == int(user_id)).all()
                 if rows:
                     return [{"book_id": r.book_id, "rating": float(r.rating)} for r in rows]
+                if db.query(User.id).filter(User.id == int(user_id)).first():
+                    return []
             finally:
                 db.close()
         except Exception:

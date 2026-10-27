@@ -36,7 +36,7 @@ class Book(Base):
     books_count = Column(Integer)
     isbn = Column(String(50))
     isbn13 = Column(String(50))
-    authors = Column(String(500), index=True)
+    authors = Column(Text, index=True)
     original_publication_year = Column(Integer, index=True)
     original_title = Column(String(500))
     title = Column(String(500), nullable=False, index=True)

@@ -18,7 +18,8 @@ vi.mock('../services/api', () => ({
     logout: vi.fn(),
     getUserFavorites: vi.fn(),
     getUserReadingList: vi.fn(),
-    getUserRatings: vi.fn(),
+     getUserRatings: vi.fn(),
+     saveRating: vi.fn(),
     getPopularRecommendations: vi.fn(),
     getBooks: vi.fn(),
     getGenres: vi.fn(),
@@ -51,7 +52,8 @@ beforeEach(() => {
   localStorage.clear();
   api.getUserFavorites.mockResolvedValue({ favorites: [] });
   api.getUserReadingList.mockResolvedValue({ reading_list: [] });
-  api.getUserRatings.mockResolvedValue({ ratings: [] });
+   api.getUserRatings.mockResolvedValue({ ratings: [] });
+   api.saveRating.mockResolvedValue({ success: true });
   api.getPopularRecommendations.mockResolvedValue({ recommendations: [] });
   api.getBooks.mockResolvedValue({ books: [], total_pages: 1 });
   api.getGenres.mockResolvedValue({ genres: [] });
@@ -134,6 +136,22 @@ describe('authentication and onboarding screens', () => {
     expect(starter).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: `Open ${book.title}` }));
     expect(await screen.findByRole('dialog', { name: `${book.title} details` })).toBeInTheDocument();
+  });
+
+  it('closes onboarding and returns to For You after the third distinct rating', async () => {
+    const books = [book, { ...book, book_id: 43, title: 'Second Test Book' }, { ...book, book_id: 44, title: 'Third Test Book' }];
+    api.getCurrentUser.mockResolvedValue({ user });
+    api.getPopularRecommendations.mockResolvedValue({ recommendations: books });
+    render(<App />);
+
+    await screen.findByRole('heading', { name: 'Tell us what you love' });
+    await waitFor(() => expect(screen.getAllByRole('button', { name: '5 stars' })).toHaveLength(3));
+    const ratingButtons = screen.getAllByRole('button', { name: '5 stars' });
+    for (const ratingButton of ratingButtons.slice(0, 3)) fireEvent.click(ratingButton);
+
+    await waitFor(() => expect(api.saveRating).toHaveBeenCalledTimes(3));
+    expect(screen.queryByRole('heading', { name: 'Tell us what you love' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'For You' }).some((button) => button.getAttribute('aria-current') === 'page')).toBe(true);
   });
 });
 

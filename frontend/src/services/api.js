@@ -86,6 +86,11 @@ export const api = {
     return request(withQuery('/recommendations/compare', { book_id: bookId, n }));
   },
   async getEvaluationMetrics() { return request('/evaluation/metrics'); },
+  async predictGenres(payload) {
+    return request('/evaluation/genre-predict', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  async getUserCluster(userId) { return request(`/users/${userId}/cluster`); },
+  async getClusterOverview() { return request('/evaluation/clusters'); },
 
   async getUserProfile(userId) { return request(`/users/${userId}`); },
   async getUserRatings(userId) { return request(`/users/${userId}/ratings`); },

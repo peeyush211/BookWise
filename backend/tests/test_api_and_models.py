@@ -41,6 +41,21 @@ class TestBookWiseBackend(unittest.TestCase):
         pred = cf.predict_rating(user_id=1, book_id=1)
         self.assertTrue(1.0 <= pred <= 5.0)
 
+    def test_04b_collaborative_fold_in_for_new_user(self):
+        cf = CollaborativeRecommender()
+        if cf.book_factors is None or not cf.book_id_to_idx:
+            self.skipTest("SVD artifact is not available")
+        known_book = next(iter(cf.book_id_to_idx))
+        recommendations = cf.recommend_for_user(
+            user_id=987654321,
+            n=3,
+            rated_book_ids={known_book},
+            user_ratings=[{"book_id": known_book, "rating": 5.0}],
+        )
+        self.assertGreater(len(recommendations), 0)
+        self.assertIn("predicted_rating", recommendations[0])
+        self.assertIn("cold-start fold-in", recommendations[0]["algorithm"])
+
     def test_05_hybrid_recommender(self):
         hybrid = HybridRecommender(alpha=0.5)
         recs = hybrid.recommend(user_id=1, user_ratings=[{"book_id": 1, "rating": 5.0}], n=5)

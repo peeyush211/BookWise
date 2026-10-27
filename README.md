@@ -16,6 +16,8 @@ recommender, private reader tools, ratings, shelves, and shareable lists.
 - Recommendation preferences, feedback events, experiments, explanations, and
   reader-specific ranking signals.
 - ML dashboard with model comparison and offline evaluation metrics.
+- ML Insights page with ranking charts, genre prediction, K-Means reading
+  clusters, and explanations for cluster-aware personalization.
 - Responsive warm-ivory/gold interface with light and dark themes.
 
 ## Technology
@@ -166,6 +168,9 @@ Public endpoints:
 | GET | `/api/books/<id>/similar` | Similar-book recommendations |
 | GET | `/api/recommendations/popular` | Popular and hidden-gem shelves |
 | GET | `/api/evaluation/metrics` | Offline model metrics |
+| POST | `/api/evaluation/genre-predict` | Predict book genres from metadata |
+| GET | `/api/evaluation/clusters` | Aggregate application reading clusters |
+| GET | `/api/users/<id>/cluster` | Current reader's K-Means taste cluster |
 | GET | `/api/reader/shared/<token>` | Public published-list payload |
 
 Authentication endpoints:

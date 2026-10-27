@@ -1,4 +1,4 @@
-"""Apply the SQLAlchemy schema and seed the read-only book catalog."""
+"""Apply the SQLAlchemy schema and synchronize the read-only book catalog."""
 
 from .app import create_app
 from .database import init_db

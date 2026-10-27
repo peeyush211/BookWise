@@ -5,7 +5,7 @@ from functools import lru_cache
 import pandas as pd
 from flask import Blueprint, request, jsonify
 from ..database import SessionLocal
-from ..models.database_models import Rating, Book
+from ..models.database_models import Rating, Book, User
 from ..recommender.popularity import PopularityRecommender
 from ..recommender.content_based import ContentBasedRecommender
 from ..recommender.collaborative import CollaborativeRecommender
@@ -13,6 +13,7 @@ from ..recommender.hybrid import HybridRecommender
 from ..config import Config
 from ..recommender.history import get_cached_user_history, history_cache_info, invalidate_user_history_cache
 from ..auth import current_user, require_auth, require_owner
+from ..recommender.ml_insights import cluster_overview, cluster_users, predict_genres, predict_multilabel_genres
 
 recommendations_bp = Blueprint("recommendations", __name__)
 
@@ -64,6 +65,10 @@ def _load_user_ratings(db, user_id):
     rows = db.query(Rating).filter(Rating.user_id == user_id).all()
     if rows:
         return [{"book_id": r.book_id, "rating": float(r.rating)} for r in rows]
+    # A registered BookWise reader must start from their real app history.
+    # Never leak a same-numbered offline Goodbooks identity into a new account.
+    if db.query(User.id).filter(User.id == user_id).first():
+        return []
     return get_cached_user_history(user_id)
 
 @recommendations_bp.route("/recommendations/popular", methods=["GET"])
@@ -106,7 +111,10 @@ def get_user_recommendations(user_id):
         # 1. Fetch user's ratings from database
         user_ratings_list = _load_user_ratings(db, user_id)
                     
-        # 3. Generate hybrid recommendations
+        strategy = "popularity" if len(user_ratings_list) == 0 else "content_based" if len(user_ratings_list) < 3 else "hybrid"
+        # HybridRecommender owns the same threshold gate used by the UI:
+        # popularity for zero ratings, content affinity for one or two, and
+        # the full ensemble once three explicit ratings exist.
         with _model_lock:
             recs = hybrid_model.recommend(
                 user_id=user_id,
@@ -120,6 +128,7 @@ def get_user_recommendations(user_id):
             "user_id": user_id,
             "ratings_count": len(user_ratings_list),
             "alpha": alpha,
+            "recommendation_strategy": strategy,
             "genre_filter": genre_filter or "all",
             "is_cold_start": len(user_ratings_list) < 3,
             "count": len(recs),
@@ -188,3 +197,35 @@ def get_evaluation_metrics():
         return jsonify(data)
     else:
         return jsonify({"status": "Evaluation in progress or artifacts not yet compiled."}), 202
+
+
+@recommendations_bp.route("/evaluation/genre-predict", methods=["POST"])
+def genre_prediction():
+    payload = request.get_json(silent=True) or {}
+    try:
+        result = predict_genres(payload)
+        result["multilabel"] = predict_multilabel_genres(payload)
+        return jsonify(result)
+    except ValueError as exc:
+        return jsonify({"error": {"code": "validation_error", "message": str(exc)}}), 400
+
+
+@recommendations_bp.route("/evaluation/clusters", methods=["GET"])
+def evaluation_clusters():
+    db = SessionLocal()
+    try:
+        return jsonify(cluster_overview(db))
+    finally:
+        db.close()
+
+
+@recommendations_bp.route("/users/<int:user_id>/cluster", methods=["GET"])
+def user_cluster(user_id):
+    owner_error = require_owner(user_id)
+    if owner_error:
+        return owner_error
+    db = SessionLocal()
+    try:
+        return jsonify(cluster_users(db, user_id))
+    finally:
+        db.close()

@@ -44,3 +44,6 @@ frontend/dist/
 
 # Large Raw Datasets (preserve pipeline, download instructions in README)
 # data/raw/ratings.csv
+
+# Runtime ML review telemetry
+artifacts/unknown_genre_tags.json

@@ -1,0 +1,3 @@
+# Render and other PaaS providers commonly look for requirements.txt by default.
+# Keep the pinned dependency list in one place for reproducible installs.
+-r requirements.lock

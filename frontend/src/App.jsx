@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage';
 import ForYouPage from './pages/ForYouPage';
 import MyLibraryPage from './pages/MyLibraryPage';
 import MLDashboardPage from './pages/MLDashboardPage';
+import MLInsightsPage from './pages/MLInsightsPage';
 import BookDetailModal from './components/BookDetailModal';
 import { api } from './services/api';
 import useFocusTrap from './hooks/useFocusTrap';
@@ -117,6 +118,7 @@ export default function App() {
   const [comparisonBooks, setComparisonBooks] = useState([]);
   const [showComparison, setShowComparison] = useState(false);
   const [readerRevision, setReaderRevision] = useState(0);
+  const [recommendationRevision, setRecommendationRevision] = useState(0);
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('bookwise_theme') || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); }
     catch { return 'light'; }
@@ -135,6 +137,7 @@ export default function App() {
   const [favorites, setFavorites] = useState([]);
   const [readingList, setReadingList] = useState({});
   const [userRatings, setUserRatings] = useState({});
+  const userRatingsRef = useRef({});
   const [toast, setToast] = useState(null);
   const toastTimerRef = useRef(null);
   const userDataSequence = useRef(0);
@@ -190,7 +193,9 @@ export default function App() {
       if (sequence !== userDataSequence.current) return;
       setFavorites((favRes.favorites || []).map((favorite) => favorite.book_id));
       setReadingList(Object.fromEntries((listRes.reading_list || []).map((item) => [item.book_id, item.status])));
-      setUserRatings(Object.fromEntries((rateRes.ratings || []).map((item) => [item.book_id, item.rating])));
+      const ratings = Object.fromEntries((rateRes.ratings || []).map((item) => [item.book_id, item.rating]));
+      userRatingsRef.current = ratings;
+      setUserRatings(ratings);
     } catch (error) {
       if (sequence !== userDataSequence.current) return;
       if (error.status === 401) setCurrentUser(null);
@@ -225,7 +230,7 @@ export default function App() {
     setCurrentUser(null);
     setUserDataReady(false);
     setOnboardingDismissed(false);
-    setFavorites([]); setReadingList({}); setUserRatings({});
+     setFavorites([]); setReadingList({}); userRatingsRef.current = {}; setUserRatings({});
     setCurrentTab('home');
     setComparisonBooks([]);
     setShowComparison(false);
@@ -275,8 +280,17 @@ export default function App() {
     try {
       await api.saveRating(currentUser.id, bookId, rating);
       attributeEvent(bookId, 'rating', rating);
-      setUserRatings((previous) => ({ ...previous, [bookId]: rating }));
+      const nextRatings = { ...userRatingsRef.current, [bookId]: rating };
+      userRatingsRef.current = nextRatings;
+      setUserRatings(nextRatings);
+      setRecommendationRevision((value) => value + 1);
       showToast(`Saved your ${rating}★ rating.`, 'success');
+      if (Object.keys(nextRatings).length >= 3) {
+        setOnboardingDismissed(true);
+        setCurrentTab('for-you');
+        closeBook();
+        showToast('Three ratings saved — your personalized recommendations are ready.', 'success');
+      }
     } catch { showToast('Could not save rating.', 'error'); }
   });
 
@@ -335,11 +349,12 @@ export default function App() {
         {showComparison && <BookComparison books={comparisonBooks} onRemove={id => setComparisonBooks(items => items.filter(book => book.book_id !== id))} onClose={() => setShowComparison(false)} />}
         {sharedToken ? <SharedListPage key={sharedToken} token={sharedToken} onSelectBook={selectBook} /> : <>
         {currentTab === 'home' && <HomePage onSelectBook={selectBook} searchQuery={searchQuery} favorites={favorites} onToggleFavorite={handleToggleFavorite} readingList={readingList} onUpdateStatus={handleUpdateStatus} onExploreForYou={() => currentUser ? setCurrentTab('for-you') : setAuthDialog('login')} />}
-        {currentTab === 'for-you' && currentUser && <ForYouPage userId={currentUser.id} activeUser={currentUser} onSelectBook={selectBook} favorites={favorites} onToggleFavorite={handleToggleFavorite} readingList={readingList} onUpdateStatus={handleUpdateStatus} onRate={handleRateBook} />}
+         {currentTab === 'for-you' && currentUser && <ForYouPage key={`${currentUser.id}:${recommendationRevision}`} userId={currentUser.id} activeUser={currentUser} onSelectBook={selectBook} favorites={favorites} onToggleFavorite={handleToggleFavorite} readingList={readingList} onUpdateStatus={handleUpdateStatus} onRate={handleRateBook} />}
         {currentTab === 'library' && currentUser && <MyLibraryPage userId={currentUser.id} activeUser={currentUser} onSelectBook={selectBook} favorites={favorites} onToggleFavorite={handleToggleFavorite} readingList={readingList} onUpdateStatus={handleUpdateStatus} />}
-        {currentTab === 'dashboard' && <MLDashboardPage currentUser={currentUser} onSelectBook={selectBook} onSignIn={() => setAuthDialog('login')} />}
+         {currentTab === 'dashboard' && <MLDashboardPage currentUser={currentUser} onSelectBook={selectBook} onSignIn={() => setAuthDialog('login')} />}
+         {currentTab === 'insights' && <MLInsightsPage currentUser={currentUser} onSignIn={() => setAuthDialog('login')} />}
         {currentTab === 'reader' && currentUser && <ReaderWorkspace key={`${currentUser.id}:${readerRevision}`} onSelectBook={selectBook} />}
-        {currentTab !== 'home' && currentTab !== 'dashboard' && !currentUser && <div className="rounded-2xl border border-[#E8DFC8] bg-white p-12 text-center"><h2 className="font-serif text-2xl font-bold">Sign in to continue</h2><p className="mt-2 text-sm text-[#7A6D5A]">Your recommendations and library are private to your account.</p><button onClick={() => setAuthDialog('login')} className="mt-5 rounded-lg bg-[#1E1B18] px-5 py-2.5 text-sm font-semibold text-white">Sign in</button></div>}
+         {currentTab !== 'home' && currentTab !== 'dashboard' && currentTab !== 'insights' && !currentUser && <div className="rounded-2xl border border-[#E8DFC8] bg-white p-12 text-center"><h2 className="font-serif text-2xl font-bold">Sign in to continue</h2><p className="mt-2 text-sm text-[#7A6D5A]">Your recommendations and library are private to your account.</p><button onClick={() => setAuthDialog('login')} className="mt-5 rounded-lg bg-[#1E1B18] px-5 py-2.5 text-sm font-semibold text-white">Sign in</button></div>}
         </>}
       </main>
       {selectedBook && <BookDetailModal currentUser={currentUser} onProgressChange={progressChanged} onCompare={addComparison} isCompared={comparisonBooks.some(book => book.book_id === selectedBook.book_id)} book={selectedBook} onClose={closeBook} userRating={userRatings[selectedBook.book_id]} onRate={handleRateBook} isFavorite={favorites.includes(selectedBook.book_id)} onToggleFavorite={handleToggleFavorite} readingStatus={readingList[selectedBook.book_id]} onUpdateStatus={handleUpdateStatus} onSelectSimilar={selectBook} />}
