@@ -34,13 +34,13 @@ recommender, private reader tools, ratings, shelves, and shareable lists.
 | Database | SQLite for local development; PostgreSQL for persistent deployment |
 | Testing | Python unittest, Vitest, Testing Library, Oxlint |
 | API server | Gunicorn serving Flask via WSGI |
-| Hosting | Render Static Site (frontend) + Render Web Service (API) |
+| Hosting | Render Static Site (frontend) + AWS EC2 (backend API) |
 | Production data | PostgreSQL via `DATABASE_URL` (provider configured at deployment) |
 
 The app does not depend on a third-party recommendation, authentication, or
 reader-data SaaS. Recommendation models, authentication, reader tools, and API
-routes are implemented in this repository. Render supplies hosting, and
-PostgreSQL supplies persistent production storage.
+routes are implemented in this repository. Render hosts the frontend, and
+AWS EC2 hosts the backend. Database configuration comes from `DATABASE_URL`.
 
 ## Project structure
 
@@ -163,7 +163,7 @@ hosted frontend, set `VITE_API_BASE_URL` to the complete backend API base,
 including `/api`, for example:
 
 ```dotenv
-VITE_API_BASE_URL=https://bookwise-api.onrender.com/api
+VITE_API_BASE_URL=https://<your-backend-domain>/api
 ```
 
 ## API overview
@@ -240,10 +240,10 @@ npm run dev -- --host 127.0.0.1 --port 5190 --strictPort
 
 Try the [live demo](https://bookwise-frontend-bz3e.onrender.com).
 The hosting layout uses a Render Static Site for the React frontend and a
-Render Web Service for the Flask API. PostgreSQL is recommended for persistent
+AWS EC2 instance for the Flask API. PostgreSQL is recommended for persistent
 deployed data; the database provider is configured through `DATABASE_URL`.
 
-See the [deployment guide](docs/DEPLOYMENT.md) for Render configuration,
+See the [deployment guide](docs/DEPLOYMENT.md) for frontend and backend configuration,
 database initialization, troubleshooting, deployment checks, and optional Docker setup.
 
 ## Security notes

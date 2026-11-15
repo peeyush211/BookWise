@@ -2,73 +2,46 @@
 
 [Back to the README](../README.md)
 
-## Deploy on Render's free options
+## Hosting
 
-The recommended production layout is:
+The frontend runs on a Render Static Site. The Flask backend runs on AWS EC2.
+Database configuration is supplied through `DATABASE_URL`; no database hosting
+provider is assumed here.
 
-```text
-Render Static Site  →  Render Web Service  →  PostgreSQL database
-        frontend             Flask API              persistent data
+## Backend on AWS EC2
+
+Install dependencies from the project root:
+
+```sh
+pip install -r requirements.lock
 ```
 
-Do not deploy the production app with SQLite. Render web-service filesystems
-are not a safe place for permanent user accounts, ratings, or shelves. Use a
-PostgreSQL connection string for deployed data.
-
-Render's free web services spin down after 15 minutes without traffic, so the
-first request after inactivity can be slow. This is suitable for a demo,
-portfolio project, or class submission, not latency-sensitive production
-traffic.
-
-### A. Create the backend Web Service
-
-1. Push the project to GitHub.
-2. In Render, choose **New → Web Service** and connect the repository.
-3. Use these settings:
-
-| Setting | Value |
-|---|---|
-| Root Directory | Leave blank |
-| Runtime | Python 3 |
-| Build Command | `pip install -r requirements.lock` |
-| Start Command | `gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 backend.wsgi:app` |
-| Health Check Path | `/api/health` |
-
-4. Add these environment variables:
+Configure these environment variables on the backend:
 
 ```text
 APP_ENV=production
 SECRET_KEY=<generate-a-long-random-secret>
-DATABASE_URL=<your-PostgreSQL-connection-string>
+DATABASE_URL=<your-database-connection-string>
 AUTH_TOKEN_MAX_AGE=86400
 AUTH_COOKIE_SECURE=true
 CORS_ORIGINS=https://bookwise-frontend-bz3e.onrender.com
 ```
 
-Do not hard-code `PORT`; Render supplies it at runtime. The application binds
-to `0.0.0.0:$PORT` so Render can route traffic to it.
+Before serving traffic, initialize or update the database:
 
-5. Deploy and verify:
-
-```text
-https://<your-backend>.onrender.com/api/health
+```sh
+python -m backend.migrate
 ```
 
-Production web workers do not initialize the database. Before serving traffic,
-run `python -m backend.migrate` in an environment with the production
-`DATABASE_URL` and `APP_ENV=production`. This creates the schema and synchronizes
-the catalogue from `data/processed/books_clean.csv`. Run it again after schema
-changes, with a database backup in place.
+Production web workers do not initialize the database. The migration command
+creates the schema and synchronizes the catalogue from
+`data/processed/books_clean.csv`. Back up existing data before schema changes.
 
-### B. Create the database
+The application's Gunicorn entry point is `backend.wsgi:app`. Use your EC2
+process configuration to run it, and expose the API through an HTTPS endpoint.
+The backend domain and instance process configuration are deployment-specific.
 
-Create a PostgreSQL database in Render if a suitable free database is available
-for your account, then copy its internal connection string into the backend's
-`DATABASE_URL` environment variable. For real user data, use a database plan
-with persistence and backups. Render's free Postgres offering has an expiry
-period, so it should not be treated as permanent production storage.
-
-### C. Create the frontend Static Site
+## Frontend on Render
 
 1. Choose **New → Static Site** in Render and connect the same repository.
 2. Use these settings:
@@ -82,7 +55,7 @@ period, so it should not be treated as permanent production storage.
 3. Add this build environment variable:
 
 ```text
-VITE_API_BASE_URL=https://<your-backend>.onrender.com/api
+VITE_API_BASE_URL=https://<your-backend-domain>/api
 ```
 
 4. Deploy the static site.
@@ -95,12 +68,12 @@ CORS_ORIGINS=https://bookwise-frontend-bz3e.onrender.com
 
 6. Redeploy the backend after changing `CORS_ORIGINS`.
 
-### D. Verify the deployed application
+## Verify the deployed application
 
 Check the API first:
 
 ```text
-https://<your-backend>.onrender.com/api/health
+https://<your-backend-domain>/api/health
 ```
 
 Then open the frontend URL and test this order:
@@ -126,8 +99,7 @@ docker build -t bookwise-api .
 docker run --rm -p 8000:10000 -e PORT=10000 bookwise-api
 ```
 
-For Render, the native Python Web Service configuration above is simpler. Use
-the Docker runtime only if you specifically want container-based deployment.
+Docker is optional; use it only if your EC2 deployment runs the API in a container.
 
 ## Security and production notes
 
