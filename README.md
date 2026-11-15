@@ -5,19 +5,23 @@ React/Vite frontend and a Flask API. It combines catalogue search, popularity
 ranking, TF-IDF content similarity, SVD collaborative filtering, a hybrid
 recommender, private reader tools, ratings, shelves, and shareable lists.
 
+**Live demo:** [bookwise-frontend-bz3e.onrender.com](https://bookwise-frontend-bz3e.onrender.com)
+
 ## Features
 
 - Search 10,000 Goodbooks catalogue titles by title, author, keyword, or genre.
 - Popular, hidden-gem, similar-book, and personalized recommendation feeds.
 - Hybrid recommendation engine using popularity, content similarity, and SVD.
+- A personalized **For You** feed with preference controls, feedback events,
+  experiments, explanations, and reader-specific ranking signals.
 - User accounts with secure password hashes and HttpOnly authentication cookies.
 - Ratings, favorites, reading status, progress tracking, notes, reviews, comments,
   followed authors, custom shelves, private lists, and public share links.
-- Recommendation preferences, feedback events, experiments, explanations, and
-  reader-specific ranking signals.
-- ML dashboard with model comparison and offline evaluation metrics.
-- ML Insights page with ranking charts, genre prediction, K-Means reading
-  clusters, and explanations for cluster-aware personalization.
+- A Reading Room workspace for progress, notes, reviews, comments, shelves,
+  followed authors, private lists, and shareable public list links.
+- ML Dashboard model comparisons and offline evaluation metrics.
+- ML Insights with ranking charts, genre prediction, K-Means reading clusters,
+  and explanations for cluster-aware personalization.
 - Responsive warm-ivory/gold interface with light and dark themes.
 
 ## Technology
@@ -27,10 +31,16 @@ recommender, private reader tools, ratings, shelves, and shareable lists.
 | Frontend | React 19, Vite 8, Tailwind CSS 4, Lucide React |
 | Backend | Python 3.12, Flask 3, SQLAlchemy 2 |
 | Recommendation models | Popularity, TF-IDF content-based, Truncated SVD, hybrid ensemble |
-| Database | SQLite for local development; PostgreSQL for deployment |
+| Database | SQLite for local development; PostgreSQL for persistent deployment |
 | Testing | Python unittest, Vitest, Testing Library, Oxlint |
-| Production server | Gunicorn |
-| Hosting layout | Render Web Service + Render Static Site |
+| API server | Gunicorn serving Flask via WSGI |
+| Hosting | Render Static Site (frontend) + Render Web Service (API) |
+| Production data | Render PostgreSQL (recommended for deployed accounts and reader data) |
+
+The app does not depend on a third-party recommendation, authentication, or
+reader-data SaaS. Recommendation models, authentication, reader tools, and API
+routes are implemented in this repository. Render supplies hosting, and
+PostgreSQL supplies persistent production storage.
 
 ## Project structure
 
@@ -249,6 +259,10 @@ git push -u origin main
 Replace `YOUR_USERNAME` and `YOUR_REPOSITORY` with your actual GitHub values.
 GitHub may open a browser for authentication. Never place a GitHub password or
 personal access token inside a command that you commit to the project.
+
+Before the first commit, review `git status` and confirm that no `.env`,
+database file, credential, token, or `node_modules` directory is staged. The
+repository `.gitignore` excludes these local/runtime files.
 
 ### Later changes
 
