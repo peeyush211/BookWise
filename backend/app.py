@@ -11,6 +11,7 @@ from .routes.recommendations import recommendations_bp
 from .routes.users import users_bp
 from .routes.reader import reader_bp
 from .routes.discovery import discovery_bp
+print("hello")
 
 
 def _sanitize_json(value):
